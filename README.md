@@ -11,8 +11,17 @@ pnpm db:up      # Postgres + PostGIS (dev DB `haupcar`, test DB `haupcar_test`)
 pnpm db:migrate && pnpm db:seed   # schema + demo car models
 pnpm db:create-admin admin@haupcar.local <password> Admin   # admins are CLI-only
 pnpm test       # api (Vitest + real Postgres) + web (Vitest + jsdom)
-pnpm dev        # api :3000, web :5173 (proxies /api → api)
+pnpm dev        # shared (watch), api :3000, web :5173 (proxies /api → api)
 ```
+
+If port 3000 is taken, run the API elsewhere and point the web proxy at it:
+`PORT=3100 pnpm --filter @haupcar/api dev` and `API_PROXY=http://localhost:3100 pnpm --filter @haupcar/web dev`.
+
+## Layout
+
+- `packages/shared` — Zod schemas, enums and types used by both the API (validation, OpenAPI) and the web app (forms, API types)
+- `apps/api` — NestJS modular monolith (`auth`, `vehicles`, `files`)
+- `apps/web` — React 19 + Vite, TanStack Query, React Hook Form, shadcn/ui, Leaflet. Owner pages (`/vehicles`) and admin review (`/admin`)
 
 ## API docs
 
