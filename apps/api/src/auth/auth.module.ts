@@ -5,6 +5,7 @@ import { PassportModule } from '@nestjs/passport';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
+import { RolesGuard } from './roles.guard.js';
 import { JwtStrategy, LocalStrategy, requireJwtSecret } from './strategies.js';
 
 @Module({
@@ -19,7 +20,9 @@ import { JwtStrategy, LocalStrategy, requireJwtSecret } from './strategies.js';
     AuthService,
     LocalStrategy,
     JwtStrategy,
+    // Order matters: authenticate first, then check roles.
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
   ],
   exports: [AuthService],
 })

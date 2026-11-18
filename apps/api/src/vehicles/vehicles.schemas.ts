@@ -91,6 +91,7 @@ export const vehicleSchema = z.strictObject({
   model: carModelSchema.pick({ id: true, make: true, model: true, year: true }),
   photos: z.array(photoSchema).describe('Upload order; the first is the cover'),
   documents: z.array(documentSchema),
+  statusReason: z.string().nullable().describe('Why the vehicle was rejected or suspended'),
 });
 
 export const vehiclePageSchema = z.strictObject({

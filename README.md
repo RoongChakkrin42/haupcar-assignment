@@ -28,3 +28,8 @@ Conventions: all routes under `/api/v1`, bearer JWT unless public, money in inte
 Uploads (photos, documents) go through the API: images are re-encoded to WebP ≤ 1600px with all
 EXIF (incl. GPS) removed, then stored under `UPLOAD_DIR` (default `apps/api/uploads`, git-ignored).
 Clients read them through signed URLs (`/api/v1/files/...`, valid ~1 hour) returned on each vehicle.
+
+Admin review (`/admin/vehicles`, role `admin` only): FIFO queue via
+`?status=pending_review&order=oldest`, then `POST /admin/vehicles/:id/status` with
+`{ status, reason?, version }` — `pending_review → approved | rejected`, `approved → suspended`,
+`suspended → approved`. Reject/suspend need a reason, which owners see as `statusReason`.

@@ -3,7 +3,9 @@ import { Test } from '@nestjs/testing';
 import sharp from 'sharp';
 import request from 'supertest';
 import { AppModule } from '../src/app.module.js';
+import { createAdmin } from '../src/auth/create-admin.js';
 import { setupApp } from '../src/setup-app.js';
+import { db } from './db.js';
 
 export async function createTestApp() {
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
@@ -67,4 +69,43 @@ export function uploadDocument(
 export async function addSubmitMedia(app: INestApplication, token: string, vehicleId: string) {
   expect((await uploadPhoto(app, token, vehicleId)).status).toBe(201);
   await uploadDocument(app, token, vehicleId).expect(201);
+}
+
+export async function loginAdmin(app: INestApplication) {
+  const email = `admin-${crypto.randomUUID()}@test.local`;
+  await createAdmin(db, { email, password: 'admin-password-123', name: 'Admin' });
+  const res = await request(app.getHttpServer())
+    .post('/api/v1/auth/login')
+    .send({ email, password: 'admin-password-123' })
+    .expect(200);
+  return { token: res.body.accessToken as string, user: res.body.user };
+}
+
+/** Creates a complete vehicle for `token` and submits it; returns the pending vehicle. */
+export async function createSubmittedVehicle(
+  app: INestApplication,
+  token: string,
+  modelId: string,
+  plateNumber = `${Math.floor(Math.random() * 1e6)}`,
+) {
+  const http = request(app.getHttpServer());
+  const auth = { Authorization: `Bearer ${token}` };
+  const { body: v } = await http
+    .post('/api/v1/vehicles')
+    .set(auth)
+    .send({
+      modelId,
+      plateNumber,
+      plateProvince: 'กรุงเทพมหานคร',
+      location: { lat: 13.7, lng: 100.5 },
+      pickupAddress: 'Siam',
+      dailyPrice: 100000,
+    })
+    .expect(201);
+  await addSubmitMedia(app, token, v.id);
+  const res = await request(app.getHttpServer())
+    .post(`/api/v1/vehicles/${v.id}/submit`)
+    .set(auth)
+    .expect(200);
+  return res.body;
 }

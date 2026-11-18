@@ -18,6 +18,25 @@ describe('assertTransition', () => {
     expect(() => assertTransition(from, to, 'owner')).toThrow(/cannot change status/);
   });
 
+  it.each([
+    ['pending_review', 'approved'],
+    ['pending_review', 'rejected'],
+    ['approved', 'suspended'],
+    ['suspended', 'approved'],
+  ] as const)('admin can move %s -> %s', (from, to) => {
+    expect(() => assertTransition(from, to, 'admin')).not.toThrow();
+  });
+
+  it.each([
+    ['draft', 'approved'],
+    ['approved', 'rejected'],
+    ['rejected', 'approved'],
+    ['approved', 'approved'],
+    ['pending_review', 'suspended'],
+  ] as const)('admin cannot move %s -> %s', (from, to) => {
+    expect(() => assertTransition(from, to, 'admin')).toThrow(/cannot change status/);
+  });
+
   it('system re-queues an approved vehicle for review', () => {
     expect(() => assertTransition('approved', 'pending_review', 'system')).not.toThrow();
   });

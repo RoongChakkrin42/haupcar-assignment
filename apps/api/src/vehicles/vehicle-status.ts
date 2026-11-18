@@ -4,10 +4,14 @@ import type { vehicleStatus } from '../db/schema.js';
 export type VehicleStatus = (typeof vehicleStatus.enumValues)[number];
 type Actor = 'owner' | 'admin' | 'system';
 
-// The only place allowed status changes are defined. Admin transitions arrive in Step 6.
+// The only place allowed status changes are defined.
 const TRANSITIONS: Record<Actor, Partial<Record<VehicleStatus, VehicleStatus[]>>> = {
   owner: { draft: ['pending_review'], rejected: ['pending_review'] },
-  admin: {},
+  admin: {
+    pending_review: ['approved', 'rejected'],
+    approved: ['suspended'],
+    suspended: ['approved'], // reinstate
+  },
   system: { approved: ['pending_review'] }, // key fields edited after approval
 };
 

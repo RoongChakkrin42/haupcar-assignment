@@ -30,7 +30,7 @@ export type VehicleRow = typeof vehicles.$inferSelect;
 
 const toPoint = (loc: LatLng | null | undefined) => (loc ? { x: loc.lng, y: loc.lat } : loc);
 
-const vehicleColumns = {
+export const vehicleColumns = {
   id: vehicles.id,
   ownerId: vehicles.ownerId,
   status: vehicles.status,
@@ -57,7 +57,15 @@ const ownedBy = (ownerId: string, id?: string) =>
     id ? eq(vehicles.id, id) : undefined,
   );
 
+const notDeleted = (id: string) => and(eq(vehicles.id, id), isNull(vehicles.deletedAt));
+
 const SUBMIT_REQUIRED = ['location', 'dailyPrice', 'pickupAddress'] as const;
+
+export function assertVersion(current: VehicleRow, version: number) {
+  if (current.version !== version) {
+    throw new ConflictException('Vehicle was modified by someone else; reload and try again');
+  }
+}
 
 @Injectable()
 export class VehiclesService {
@@ -96,9 +104,7 @@ export class VehiclesService {
 
   async update(ownerId: string, id: string, { version, ...changes }: UpdateVehicleInput) {
     await this.withOwnedVehicle(ownerId, id, async (tx, current) => {
-      if (current.version !== version) {
-        throw new ConflictException('Vehicle was modified by someone else; reload and try again');
-      }
+      assertVersion(current, version);
       await tx
         .update(vehicles)
         .set({ ...changes, location: toPoint(changes.location), version: current.version + 1 })
@@ -152,8 +158,20 @@ export class VehiclesService {
     id: string,
     fn: (tx: Tx, current: VehicleRow) => Promise<T>,
   ) {
+    return this.withLockedVehicle(ownedBy(ownerId, id), fn);
+  }
+
+  /** Admin variant: any owner's vehicle, as long as it isn't deleted. */
+  withAnyVehicle<T>(id: string, fn: (tx: Tx, current: VehicleRow) => Promise<T>) {
+    return this.withLockedVehicle(notDeleted(id), fn);
+  }
+
+  private withLockedVehicle<T>(
+    where: SQL | undefined,
+    fn: (tx: Tx, current: VehicleRow) => Promise<T>,
+  ) {
     return this.db.transaction(async (tx) => {
-      const [current] = await tx.select().from(vehicles).where(ownedBy(ownerId, id)).for('update');
+      const [current] = await tx.select().from(vehicles).where(where).for('update');
       if (!current) throw new NotFoundException('Vehicle not found');
       return fn(tx, current);
     });
@@ -166,7 +184,7 @@ export class VehiclesService {
     await this.changeStatus(tx, current, 'pending_review', userId, reason);
   }
 
-  private async changeStatus(
+  async changeStatus(
     tx: Tx,
     current: VehicleRow,
     to: VehicleRow['status'],
@@ -194,11 +212,16 @@ export class VehiclesService {
       .where(where);
   }
 
-  private async withMedia<R extends { id: string; location: { x: number; y: number } | null }>(
-    rows: R[],
-  ) {
+  /** Adds photos, documents and the latest status reason; converts location to { lat, lng }. */
+  async withMedia<
+    R extends {
+      id: string;
+      status: VehicleRow['status'];
+      location: { x: number; y: number } | null;
+    },
+  >(rows: R[]) {
     const ids = rows.map((r) => r.id);
-    const [photos, documents] = ids.length
+    const [photos, documents, latest] = ids.length
       ? await Promise.all([
           this.db
             .select()
@@ -210,13 +233,22 @@ export class VehiclesService {
             .from(vehicleDocuments)
             .where(inArray(vehicleDocuments.vehicleId, ids))
             .orderBy(asc(vehicleDocuments.createdAt)),
+          this.db
+            .selectDistinctOn([vehicleStatusHistory.vehicleId])
+            .from(vehicleStatusHistory)
+            .where(inArray(vehicleStatusHistory.vehicleId, ids))
+            .orderBy(vehicleStatusHistory.vehicleId, desc(vehicleStatusHistory.createdAt)),
         ])
-      : [[], []];
+      : [[], [], []];
     return rows.map(({ location, ...row }) => ({
       ...row,
       location: location && { lat: location.y, lng: location.x },
       photos: photos.filter((p) => p.vehicleId === row.id).map((p) => this.photoDto(p)),
       documents: documents.filter((d) => d.vehicleId === row.id).map((d) => this.documentDto(d)),
+      statusReason: statusReason(
+        row.status,
+        latest.find((h) => h.vehicleId === row.id),
+      ),
     }));
   }
 
@@ -232,6 +264,15 @@ export class VehiclesService {
       url: this.storage.signedUrl(d.storageKey),
     };
   }
+}
+
+/** The reason only matters while the vehicle is still in the status that reason was given for. */
+function statusReason(
+  status: VehicleRow['status'],
+  last: typeof vehicleStatusHistory.$inferSelect | undefined,
+) {
+  const explains = (status === 'rejected' || status === 'suspended') && last?.toStatus === status;
+  return explains ? last.reason : null;
 }
 
 function rethrowConstraint(e: unknown): never {
