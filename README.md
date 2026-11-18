@@ -1,5 +1,7 @@
 # Haupcar
 
+[![CI](https://github.com/RoongChakkrin42/haupcar-assignment/actions/workflows/ci.yml/badge.svg)](https://github.com/RoongChakkrin42/haupcar-assignment/actions/workflows/ci.yml)
+
 P2P car rental marketplace — vehicle registry (demo).
 
 ## Quick start

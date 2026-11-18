@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Test-only secrets; nothing here protects real data.
+  JWT_SECRET: ci-jwt-secret
+  FILE_SIGNING_SECRET: ci-file-signing-secret
+  DATABASE_URL: postgres://haupcar:haupcar@localhost:5432/haupcar_test
+  TEST_DATABASE_URL: postgres://haupcar:haupcar@localhost:5432/haupcar_test
+  E2E_DATABASE_URL: postgres://haupcar:haupcar@localhost:5432/haupcar_e2e
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      db:
+        image: imresamu/postgis:17-3.5
+        env:
+          POSTGRES_USER: haupcar
+          POSTGRES_PASSWORD: haupcar
+          POSTGRES_DB: haupcar_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U haupcar -d haupcar_test"
+          --health-interval 2s --health-timeout 3s --health-retries 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - name: Migrations match schema.ts
+        run: |
+          pnpm --filter @haupcar/api exec drizzle-kit generate --name drift-check
+          git status --porcelain apps/api/drizzle
+          test -z "$(git status --porcelain apps/api/drizzle)" || (echo "::error::schema.ts changed without a migration — run pnpm --filter @haupcar/api db:generate" && exit 1)
+      - run: pnpm test
+      - run: pnpm --filter @haupcar/api build && pnpm --filter @haupcar/web build
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      db:
+        image: imresamu/postgis:17-3.5
+        env:
+          POSTGRES_USER: haupcar
+          POSTGRES_PASSWORD: haupcar
+          POSTGRES_DB: haupcar_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U haupcar -d haupcar_test"
+          --health-interval 2s --health-timeout 3s --health-retries 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
