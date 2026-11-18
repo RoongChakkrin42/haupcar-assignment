@@ -13,7 +13,8 @@
     "lint": "biome check .",
     "format": "biome check --write .",
     "db:migrate": "pnpm --filter @haupcar/api db:migrate",
-    "db:seed": "pnpm --filter @haupcar/api db:seed"
+    "db:seed": "pnpm --filter @haupcar/api db:seed",
+    "db:create-admin": "pnpm --filter @haupcar/api db:create-admin"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.8"
