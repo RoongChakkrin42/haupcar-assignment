@@ -14,9 +14,13 @@
     "format": "biome check --write .",
     "db:migrate": "pnpm --filter @haupcar/api db:migrate",
     "db:seed": "pnpm --filter @haupcar/api db:seed",
-    "db:create-admin": "pnpm --filter @haupcar/api db:create-admin"
+    "db:create-admin": "pnpm --filter @haupcar/api db:create-admin",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.6.8"
+    "@biomejs/biome": "^2.6.8",
+    "@playwright/test": "1.65.1",
+    "@types/pg": "^8.23.1",
+    "pg": "^8.23.1"
   }
 }

@@ -14,6 +14,10 @@ pnpm test       # api (Vitest + real Postgres) + web (Vitest + jsdom)
 pnpm dev        # shared (watch), api :3000, web :5173 (proxies /api → api)
 ```
 
+End-to-end (Playwright, Chromium): `pnpm exec playwright install chromium` once, then
+`pnpm test:e2e`. It recreates the `haupcar_e2e` database on every run and starts its own
+API (:3100) and web (:5174), so it never touches your dev data or running dev servers.
+
 If port 3000 is taken, run the API elsewhere and point the web proxy at it:
 `PORT=3100 pnpm --filter @haupcar/api dev` and `API_PROXY=http://localhost:3100 pnpm --filter @haupcar/web dev`.
 

@@ -8,3 +8,5 @@ coverage/
 .DS_Store
 .playwright-mcp/
 apps/api/uploads/
+playwright-report/
+test-results/
