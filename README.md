@@ -23,6 +23,21 @@ API (:3100) and web (:5174), so it never touches your dev data or running dev se
 If port 3000 is taken, run the API elsewhere and point the web proxy at it:
 `PORT=3100 pnpm --filter @haupcar/api dev` and `API_PROXY=http://localhost:3100 pnpm --filter @haupcar/web dev`.
 
+## Run the whole stack in Docker
+
+Production-like build (nginx + API + its own PostGIS), no Node needed on the host:
+
+```sh
+cp .env.example .env   # set JWT_SECRET / FILE_SIGNING_SECRET; optional ADMIN_EMAIL / ADMIN_PASSWORD
+docker compose --profile app up --build -d
+open http://localhost:8080          # Swagger: http://localhost:8080/api/docs
+```
+
+On start, a one-off `migrate` container runs migrations, seeds car models and creates the admin
+(`ADMIN_EMAIL`/`ADMIN_PASSWORD`, default `admin@haupcar.local` / `admin-password-123`) if missing.
+Data and uploads live in the `app-db-data` and `app-uploads` volumes, separate from the dev
+database. Stop with `docker compose --profile app down` (add `-v` to wipe that data).
+
 ## Layout
 
 - `packages/shared` — Zod schemas, enums and types used by both the API (validation, OpenAPI) and the web app (forms, API types)

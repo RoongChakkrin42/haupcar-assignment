@@ -1,7 +1,8 @@
 // Usage: pnpm db:migrate | pnpm db:seed | pnpm db:create-admin <email> <password> <name>
+//        node dist/src/db/cli.js bootstrap   (container start: migrate + seed + ADMIN_EMAIL/ADMIN_PASSWORD admin)
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
-import { createAdmin } from '../auth/create-admin.js';
+import { createAdmin, ensureAdmin } from '../auth/create-admin.js';
 import { runMigrations } from './migrate.js';
 import { seedCarModels } from './seed.js';
 
@@ -26,6 +27,17 @@ if (command === 'migrate') {
   console.log(
     await createAdmin(drizzle(pool, { casing: 'snake_case' }), { email, password, name }),
   );
+  await pool.end();
+} else if (command === 'bootstrap') {
+  await runMigrations(url);
+  const pool = new Pool({ connectionString: url });
+  const db = drizzle(pool, { casing: 'snake_case' });
+  await seedCarModels(db);
+  const { ADMIN_EMAIL: email, ADMIN_PASSWORD: password, ADMIN_NAME: name = 'Admin' } = process.env;
+  if (email && password) {
+    const { created } = await ensureAdmin(db, { email, password, name });
+    console.log(created ? `admin ${email} created` : `admin ${email} already exists`);
+  }
   await pool.end();
 } else {
   throw new Error(`unknown command: ${command}`);

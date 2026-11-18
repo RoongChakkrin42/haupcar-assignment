@@ -1,7 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import request from 'supertest';
-import { createAdmin } from '../src/auth/create-admin.js';
+import { createAdmin, ensureAdmin } from '../src/auth/create-admin.js';
 import { users } from '../src/db/schema.js';
 import { createTestApp, registerAndLogin } from './app.js';
 import { db, pool, resetDb } from './db.js';
@@ -129,6 +129,18 @@ describe('createAdmin', () => {
       .send({ email: 'admin@test.local', password: 'admin-password-123' })
       .expect(200);
     expect(login.body.user.role).toBe('admin');
+  });
+});
+
+describe('ensureAdmin', () => {
+  it('creates the admin once and leaves it alone on later runs', async () => {
+    const input = { email: 'Boot@Test.local', password: 'admin-password-123', name: 'Boot' };
+    expect(await ensureAdmin(db, input)).toEqual({ created: true });
+    expect(await ensureAdmin(db, { ...input, email: 'boot@test.local' })).toEqual({
+      created: false,
+    });
+    const rows = await db.select().from(users).where(eq(users.role, 'admin'));
+    expect(rows).toHaveLength(1);
   });
 });
 
