@@ -1,8 +1,8 @@
 import { registerSchema } from '@haupcar/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { type ReactNode, useId } from 'react';
+import { type ReactNode, useId, useState } from 'react';
 import { type FieldPath, type FieldValues, type UseFormReturn, useForm } from 'react-hook-form';
-import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
+import { Link, Navigate, useSearchParams } from 'react-router';
 import { z } from 'zod';
 import { Brand } from '@/components/brand';
 import { LicensePlate } from '@/components/license-plate';
@@ -83,19 +83,18 @@ function RootError({ message }: { message?: string }) {
 
 export function LoginPage() {
   const { user, login } = useAuth();
-  const navigate = useNavigate();
   const [params] = useSearchParams();
   const form = useForm({
     resolver: zodResolver(loginForm),
     defaultValues: { email: '', password: '' },
   });
 
+  // The only redirect: runs once login sets `user` (and for visitors already signed in).
   if (user) return <Navigate to={params.get('next') ?? homeFor(user)} replace />;
 
   const submit = form.handleSubmit(async ({ email, password }) => {
     try {
-      const u = await login(email, password);
-      navigate(params.get('next') ?? homeFor(u), { replace: true });
+      await login(email, password);
     } catch (e) {
       form.setError('root', { message: errorMessage(e) });
     }
@@ -133,19 +132,21 @@ export function LoginPage() {
 
 export function RegisterPage() {
   const { user, register } = useAuth();
-  const navigate = useNavigate();
+  const [registered, setRegistered] = useState(false);
   const form = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
     defaultValues: { name: '', email: '', phone: '', password: '' },
   });
 
-  if (user) return <Navigate to={homeFor(user)} replace />;
+  // The only redirect: a new owner goes straight to adding a car; anyone already signed in goes home.
+  if (user) return <Navigate to={registered ? '/vehicles/new' : homeFor(user)} replace />;
 
   const submit = form.handleSubmit(async (values) => {
     try {
+      setRegistered(true);
       await register({ ...values, phone: values.phone || undefined } as never);
-      navigate('/vehicles/new', { replace: true });
     } catch (e) {
+      setRegistered(false);
       form.setError('root', { message: errorMessage(e) });
     }
   });

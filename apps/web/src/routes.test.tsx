@@ -32,3 +32,22 @@ test('admins land on the review queue', async () => {
   expect(await screen.findByRole('heading', { name: 'ตรวจรถ' })).toBeInTheDocument();
   expect(await screen.findByText('ไม่มีรถรอตรวจ')).toBeInTheDocument();
 });
+
+test('a new owner lands on the new-vehicle form after signing up', async () => {
+  const user = (await import('@testing-library/user-event')).default;
+  server.use(
+    http.post('/api/v1/auth/register', () =>
+      HttpResponse.json({ accessToken: 'new-token', user: owner }),
+    ),
+    http.get('/api/v1/auth/me', () => HttpResponse.json(owner)),
+    http.get('/api/v1/car-models', () => HttpResponse.json([])),
+  );
+  const { router } = renderRoutes(routes, '/register');
+  await user.type(await screen.findByLabelText('ชื่อ'), 'Somchai');
+  await user.type(screen.getByLabelText('อีเมล'), 'owner@test.local');
+  await user.type(screen.getByLabelText('รหัสผ่าน (อย่างน้อย 8 ตัว)'), 'correct-horse-battery');
+  await user.click(screen.getByRole('button', { name: 'สมัครและเริ่มลงรถ' }));
+
+  expect(await screen.findByRole('heading', { name: 'ลงรถคันใหม่' })).toBeInTheDocument();
+  expect(router.state.location.pathname).toBe('/vehicles/new');
+});
