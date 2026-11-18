@@ -1,0 +1,28 @@
+import { ConflictException } from '@nestjs/common';
+import type { vehicleStatus } from '../db/schema.js';
+
+export type VehicleStatus = (typeof vehicleStatus.enumValues)[number];
+type Actor = 'owner' | 'admin' | 'system';
+
+// The only place allowed status changes are defined. Admin transitions arrive in Step 6.
+const TRANSITIONS: Record<Actor, Partial<Record<VehicleStatus, VehicleStatus[]>>> = {
+  owner: { draft: ['pending_review'], rejected: ['pending_review'] },
+  admin: {},
+  system: { approved: ['pending_review'] }, // key fields edited after approval
+};
+
+export function assertTransition(from: VehicleStatus, to: VehicleStatus, actor: Actor) {
+  if (!TRANSITIONS[actor][from]?.includes(to)) {
+    throw new ConflictException(`${actor} cannot change status from ${from} to ${to}`);
+  }
+}
+
+/** Fields an admin checked at approval; changing any of them needs a new review. */
+const KEY_FIELDS = ['plateNumber', 'plateProvince', 'vin', 'modelId'] as const;
+
+export function requiresReReview(
+  changes: Record<string, unknown>,
+  current: Record<string, unknown>,
+) {
+  return KEY_FIELDS.some((f) => f in changes && changes[f] !== current[f]);
+}
