@@ -1,5 +1,11 @@
 import { z } from 'zod';
-import { bodyType, documentType, fuelType, transmission, vehicleStatus } from '../db/schema.js';
+import {
+  BODY_TYPES,
+  DOCUMENT_TYPES,
+  FUEL_TYPES,
+  TRANSMISSIONS,
+  VEHICLE_STATUSES,
+} from './enums.js';
 
 // "1กข 1234", "1กข-1234" and "1กข1234" are the same plate.
 const plateNumber = z
@@ -40,7 +46,7 @@ export const updateVehicleSchema = z
 export const listVehiclesSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
-  status: z.enum(vehicleStatus.enumValues).optional(),
+  status: z.enum(VEHICLE_STATUSES).optional(),
 });
 
 // Response shapes (strict: tests fail if the API returns undocumented fields).
@@ -49,14 +55,14 @@ export const carModelSchema = z.strictObject({
   make: z.string(),
   model: z.string(),
   year: z.int(),
-  bodyType: z.enum(bodyType.enumValues),
-  transmission: z.enum(transmission.enumValues),
-  fuel: z.enum(fuelType.enumValues),
+  bodyType: z.enum(BODY_TYPES),
+  transmission: z.enum(TRANSMISSIONS),
+  fuel: z.enum(FUEL_TYPES),
   seats: z.int(),
 });
 
 export const documentUploadSchema = z.object({
-  type: z.enum(documentType.enumValues),
+  type: z.enum(DOCUMENT_TYPES),
   expiresOn: z.iso.date().optional().describe('YYYY-MM-DD, e.g. insurance end date'),
 });
 export type DocumentUploadInput = z.infer<typeof documentUploadSchema>;
@@ -67,7 +73,7 @@ export const photoSchema = z.strictObject({ id: z.uuid(), url: signedUrl });
 
 export const documentSchema = z.strictObject({
   id: z.uuid(),
-  type: z.enum(documentType.enumValues),
+  type: z.enum(DOCUMENT_TYPES),
   expiresOn: z.iso.date().nullable(),
   url: signedUrl,
 });
@@ -75,7 +81,7 @@ export const documentSchema = z.strictObject({
 export const vehicleSchema = z.strictObject({
   id: z.uuid(),
   ownerId: z.uuid(),
-  status: z.enum(vehicleStatus.enumValues),
+  status: z.enum(VEHICLE_STATUSES),
   version: z.int(),
   plateNumber: z.string(),
   plateProvince: z.string(),
@@ -104,3 +110,8 @@ export const vehiclePageSchema = z.strictObject({
 export type CreateVehicleInput = z.infer<typeof createVehicleSchema>;
 export type UpdateVehicleInput = z.infer<typeof updateVehicleSchema>;
 export type ListVehiclesQuery = z.infer<typeof listVehiclesSchema>;
+export type CarModel = z.infer<typeof carModelSchema>;
+export type Photo = z.infer<typeof photoSchema>;
+export type VehicleDocument = z.infer<typeof documentSchema>;
+export type Vehicle = z.infer<typeof vehicleSchema>;
+export type VehiclePage = z.infer<typeof vehiclePageSchema>;

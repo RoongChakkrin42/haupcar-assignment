@@ -1,4 +1,10 @@
 import {
+  type DocumentUploadInput,
+  documentSchema,
+  documentUploadSchema,
+  photoSchema,
+} from '@haupcar/shared';
+import {
   Body,
   Controller,
   Delete,
@@ -24,12 +30,6 @@ import { ApiErrors, ApiZodResponse } from '../common/openapi.js';
 import { ZodPipe } from '../common/zod.pipe.js';
 import { MAX_UPLOAD_BYTES } from '../files/uploads.js';
 import { VehicleMediaService } from './vehicle-media.service.js';
-import {
-  type DocumentUploadInput,
-  documentSchema,
-  documentUploadSchema,
-  photoSchema,
-} from './vehicles.schemas.js';
 
 const upload = () => FileInterceptor('file', { limits: { fileSize: MAX_UPLOAD_BYTES, files: 1 } });
 const binary = { type: 'string', format: 'binary' };

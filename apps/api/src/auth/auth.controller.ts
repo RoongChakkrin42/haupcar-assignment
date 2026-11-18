@@ -1,15 +1,15 @@
-import { Body, Controller, Get, HttpCode, Post, UseGuards } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { ApiErrors, ApiZodBody, ApiZodResponse } from '../common/openapi.js';
-import { ZodPipe } from '../common/zod.pipe.js';
 import {
   authTokenSchema,
   loginSchema,
   type RegisterInput,
   registerSchema,
   userSchema,
-} from './auth.schemas.js';
+} from '@haupcar/shared';
+import { Body, Controller, Get, HttpCode, Post, UseGuards } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiErrors, ApiZodBody, ApiZodResponse } from '../common/openapi.js';
+import { ZodPipe } from '../common/zod.pipe.js';
 import { AuthService, type User } from './auth.service.js';
 import { CurrentUser, Public } from './decorators.js';
 

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { userRole } from '../db/schema.js';
+import { USER_ROLES } from './enums.js';
 
 export const registerSchema = z.object({
   email: z.email().transform((e) => e.toLowerCase()),
@@ -17,7 +17,7 @@ export const userSchema = z.strictObject({
   email: z.email(),
   name: z.string(),
   phone: z.string().nullable(),
-  role: z.enum(userRole.enumValues),
+  role: z.enum(USER_ROLES),
 });
 export const authTokenSchema = z.strictObject({
   accessToken: z
@@ -25,3 +25,6 @@ export const authTokenSchema = z.strictObject({
     .describe('JWT, send as `Authorization: Bearer <token>`; expires in 1 day'),
   user: userSchema,
 });
+
+export type User = z.infer<typeof userSchema>;
+export type AuthToken = z.infer<typeof authTokenSchema>;

@@ -1,3 +1,4 @@
+import type { CreateVehicleInput, ListVehiclesQuery, UpdateVehicleInput } from '@haupcar/shared';
 import {
   BadRequestException,
   ConflictException,
@@ -18,11 +19,6 @@ import {
 } from '../db/schema.js';
 import { FileStorage } from '../files/file-storage.js';
 import { assertTransition, requiresReReview } from './vehicle-status.js';
-import type {
-  CreateVehicleInput,
-  ListVehiclesQuery,
-  UpdateVehicleInput,
-} from './vehicles.schemas.js';
 
 type LatLng = { lat: number; lng: number };
 export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];

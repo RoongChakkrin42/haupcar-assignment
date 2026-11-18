@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { userRole, vehicleStatus } from '../db/schema.js';
-import { listVehiclesSchema, vehicleSchema } from './vehicles.schemas.js';
+import { USER_ROLES, VEHICLE_STATUSES } from './enums.js';
+import { listVehiclesSchema, vehicleSchema } from './vehicles.js';
 
 export const adminListVehiclesSchema = listVehiclesSchema.extend({
   order: z
@@ -47,10 +47,10 @@ export const adminVehicleSchema = vehicleSchema.extend({
 });
 
 export const statusHistorySchema = z.strictObject({
-  fromStatus: z.enum(vehicleStatus.enumValues).nullable(),
-  toStatus: z.enum(vehicleStatus.enumValues),
+  fromStatus: z.enum(VEHICLE_STATUSES).nullable(),
+  toStatus: z.enum(VEHICLE_STATUSES),
   reason: z.string().nullable(),
-  changedBy: z.strictObject({ id: z.uuid(), name: z.string(), role: z.enum(userRole.enumValues) }),
+  changedBy: z.strictObject({ id: z.uuid(), name: z.string(), role: z.enum(USER_ROLES) }),
   createdAt: z.iso.datetime(),
 });
 
@@ -64,3 +64,8 @@ export const adminVehiclePageSchema = z.strictObject({
   page: z.int(),
   pageSize: z.int(),
 });
+
+export type AdminVehicle = z.infer<typeof adminVehicleSchema>;
+export type AdminVehicleDetail = z.infer<typeof adminVehicleDetailSchema>;
+export type AdminVehiclePage = z.infer<typeof adminVehiclePageSchema>;
+export type StatusHistoryEntry = z.infer<typeof statusHistorySchema>;

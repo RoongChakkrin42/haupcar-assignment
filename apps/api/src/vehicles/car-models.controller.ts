@@ -1,10 +1,10 @@
+import { carModelSchema } from '@haupcar/shared';
 import { Controller, Get, Inject } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { asc } from 'drizzle-orm';
 import { ApiZodResponse } from '../common/openapi.js';
 import { DB, type Db } from '../db/db.module.js';
 import { carModels } from '../db/schema.js';
-import { carModelSchema } from './vehicles.schemas.js';
 
 @ApiTags('car models')
 @ApiBearerAuth()

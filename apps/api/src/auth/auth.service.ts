@@ -1,10 +1,10 @@
+import type { RegisterInput } from '@haupcar/shared';
 import { ConflictException, Inject, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { eq, sql } from 'drizzle-orm';
 import { isUniqueViolation } from '../common/pg-error.js';
 import { DB, type Db } from '../db/db.module.js';
 import { users } from '../db/schema.js';
-import type { RegisterInput } from './auth.schemas.js';
 import { hashPassword, verifyPassword } from './password.js';
 
 export type User = Pick<typeof users.$inferSelect, 'id' | 'email' | 'name' | 'phone' | 'role'>;

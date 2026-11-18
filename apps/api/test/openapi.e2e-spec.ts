@@ -1,13 +1,14 @@
-import type { INestApplication } from '@nestjs/common';
-import request from 'supertest';
-import { authTokenSchema, userSchema } from '../src/auth/auth.schemas.js';
 import {
+  authTokenSchema,
   carModelSchema,
   documentSchema,
   photoSchema,
+  userSchema,
   vehiclePageSchema,
   vehicleSchema,
-} from '../src/vehicles/vehicles.schemas.js';
+} from '@haupcar/shared';
+import type { INestApplication } from '@nestjs/common';
+import request from 'supertest';
 import {
   addSubmitMedia,
   createTestApp,

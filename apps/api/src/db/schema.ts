@@ -1,3 +1,11 @@
+import {
+  BODY_TYPES,
+  DOCUMENT_TYPES,
+  FUEL_TYPES,
+  TRANSMISSIONS,
+  USER_ROLES,
+  VEHICLE_STATUSES,
+} from '@haupcar/shared';
 import { sql } from 'drizzle-orm';
 import {
   check,
@@ -23,7 +31,7 @@ const updatedAt = () =>
     .defaultNow()
     .$onUpdate(() => new Date());
 
-export const userRole = pgEnum('user_role', ['owner', 'admin']);
+export const userRole = pgEnum('user_role', USER_ROLES);
 
 export const users = pgTable(
   'users',
@@ -40,9 +48,9 @@ export const users = pgTable(
   (t) => [uniqueIndex('users_email_unique').on(sql`lower(${t.email})`)],
 );
 
-export const bodyType = pgEnum('body_type', ['sedan', 'hatchback', 'suv', 'pickup', 'van', 'mpv']);
-export const transmission = pgEnum('transmission', ['automatic', 'manual']);
-export const fuelType = pgEnum('fuel_type', ['petrol', 'diesel', 'hybrid', 'ev']);
+export const bodyType = pgEnum('body_type', BODY_TYPES);
+export const transmission = pgEnum('transmission', TRANSMISSIONS);
+export const fuelType = pgEnum('fuel_type', FUEL_TYPES);
 
 export const carModels = pgTable(
   'car_models',
@@ -62,14 +70,7 @@ export const carModels = pgTable(
   ],
 );
 
-export const vehicleStatus = pgEnum('vehicle_status', [
-  'draft',
-  'pending_review',
-  'approved',
-  'rejected',
-  'suspended',
-  'archived',
-]);
+export const vehicleStatus = pgEnum('vehicle_status', VEHICLE_STATUSES);
 
 export const vehicles = pgTable(
   'vehicles',
@@ -141,11 +142,7 @@ export const vehiclePhotos = pgTable(
   (t) => [index('vehicle_photos_vehicle_idx').on(t.vehicleId, t.createdAt)],
 );
 
-export const documentType = pgEnum('document_type', [
-  'registration', // เล่มทะเบียน
-  'insurance', // ประกันภัย
-  'compulsory_insurance', // พ.ร.บ.
-]);
+export const documentType = pgEnum('document_type', DOCUMENT_TYPES);
 
 // Personal data (PII): only the owner and admins may read these.
 export const vehicleDocuments = pgTable(

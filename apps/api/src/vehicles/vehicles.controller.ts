@@ -1,4 +1,14 @@
 import {
+  type CreateVehicleInput,
+  createVehicleSchema,
+  type ListVehiclesQuery,
+  listVehiclesSchema,
+  type UpdateVehicleInput,
+  updateVehicleSchema,
+  vehiclePageSchema,
+  vehicleSchema,
+} from '@haupcar/shared';
+import {
   Body,
   Controller,
   Delete,
@@ -15,16 +25,6 @@ import type { User } from '../auth/auth.service.js';
 import { CurrentUser } from '../auth/decorators.js';
 import { ApiErrors, ApiZodBody, ApiZodQuery, ApiZodResponse } from '../common/openapi.js';
 import { ZodPipe } from '../common/zod.pipe.js';
-import {
-  type CreateVehicleInput,
-  createVehicleSchema,
-  type ListVehiclesQuery,
-  listVehiclesSchema,
-  type UpdateVehicleInput,
-  updateVehicleSchema,
-  vehiclePageSchema,
-  vehicleSchema,
-} from './vehicles.schemas.js';
 import { VehiclesService } from './vehicles.service.js';
 
 const NOT_FOUND: [number, string] = [

@@ -1,6 +1,6 @@
+import { registerSchema } from '@haupcar/shared';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { users } from '../db/schema.js';
-import { registerSchema } from './auth.schemas.js';
 import { hashPassword } from './password.js';
 
 /** Admins can only be created here (CLI), never through the public API. */

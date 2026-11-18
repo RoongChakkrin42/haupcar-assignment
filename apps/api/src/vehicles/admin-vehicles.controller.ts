@@ -1,10 +1,3 @@
-import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import type { User } from '../auth/auth.service.js';
-import { CurrentUser } from '../auth/decorators.js';
-import { Roles } from '../auth/roles.guard.js';
-import { ApiErrors, ApiZodBody, ApiZodQuery, ApiZodResponse } from '../common/openapi.js';
-import { ZodPipe } from '../common/zod.pipe.js';
 import {
   type AdminListVehiclesQuery,
   adminListVehiclesSchema,
@@ -12,7 +5,14 @@ import {
   adminVehiclePageSchema,
   type SetStatusInput,
   setStatusSchema,
-} from './admin-vehicles.schemas.js';
+} from '@haupcar/shared';
+import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import type { User } from '../auth/auth.service.js';
+import { CurrentUser } from '../auth/decorators.js';
+import { Roles } from '../auth/roles.guard.js';
+import { ApiErrors, ApiZodBody, ApiZodQuery, ApiZodResponse } from '../common/openapi.js';
+import { ZodPipe } from '../common/zod.pipe.js';
 import { AdminVehiclesService } from './admin-vehicles.service.js';
 
 const AUTH_ERRORS: [number, string][] = [

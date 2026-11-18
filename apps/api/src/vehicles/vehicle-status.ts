@@ -1,7 +1,6 @@
+import type { VehicleStatus } from '@haupcar/shared';
 import { ConflictException } from '@nestjs/common';
-import type { vehicleStatus } from '../db/schema.js';
 
-export type VehicleStatus = (typeof vehicleStatus.enumValues)[number];
 type Actor = 'owner' | 'admin' | 'system';
 
 // The only place allowed status changes are defined.

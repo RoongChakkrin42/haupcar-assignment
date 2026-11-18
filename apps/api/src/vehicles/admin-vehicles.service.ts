@@ -1,8 +1,8 @@
+import type { AdminListVehiclesQuery, SetStatusInput } from '@haupcar/shared';
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, asc, count, desc, eq, isNull, type SQL } from 'drizzle-orm';
 import { DB, type Db } from '../db/db.module.js';
 import { carModels, users, vehicleStatusHistory, vehicles } from '../db/schema.js';
-import type { AdminListVehiclesQuery, SetStatusInput } from './admin-vehicles.schemas.js';
 import { assertTransition } from './vehicle-status.js';
 import { assertVersion, VehiclesService, vehicleColumns } from './vehicles.service.js';
 

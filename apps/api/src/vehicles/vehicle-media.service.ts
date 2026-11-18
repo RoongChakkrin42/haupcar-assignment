@@ -1,9 +1,9 @@
+import type { DocumentUploadInput } from '@haupcar/shared';
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { and, count, eq } from 'drizzle-orm';
 import { vehicleDocuments, vehiclePhotos } from '../db/schema.js';
 import { FileStorage } from '../files/file-storage.js';
 import { prepareUpload } from '../files/uploads.js';
-import type { DocumentUploadInput } from './vehicles.schemas.js';
 import { VehiclesService } from './vehicles.service.js';
 
 const MAX_PHOTOS = 10;
