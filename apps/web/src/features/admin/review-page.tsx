@@ -148,7 +148,7 @@ function Photos({ vehicle }: { vehicle: AdminVehicleDetail }) {
         {rest.map((p, i) => (
           <a key={p.id} href={p.url} target="_blank" rel="noreferrer">
             <img
-              src={p.url}
+              src={p.thumbUrl}
               alt={`รูปที่ ${i + 2}`}
               className="aspect-[4/3] w-full rounded-md object-cover"
             />

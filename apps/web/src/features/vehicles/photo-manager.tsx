@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { errorMessage } from '@/lib/api';
+import { shrinkImage } from '@/lib/shrink-image';
 import { useDeletePhoto, useUploadPhoto } from './api';
 
 const MAX_PHOTOS = 10;
@@ -19,7 +20,7 @@ export function PhotoManager({ vehicle }: { vehicle: Vehicle }) {
     for (const [i, file] of list.entries()) {
       setProgress({ done: i, total: list.length });
       try {
-        await upload.mutateAsync(file);
+        await upload.mutateAsync(await shrinkImage(file));
       } catch (e) {
         toast.error(`${file.name}: ${errorMessage(e)}`);
       }
@@ -40,7 +41,11 @@ export function PhotoManager({ vehicle }: { vehicle: Vehicle }) {
       <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {vehicle.photos.map((p, i) => (
           <li key={p.id} className="group relative overflow-hidden rounded-lg border bg-muted">
-            <img src={p.url} alt={`รูปรถที่ ${i + 1}`} className="aspect-[4/3] w-full object-cover" />
+            <img
+              src={p.thumbUrl}
+              alt={`รูปรถที่ ${i + 1}`}
+              className="aspect-[4/3] w-full object-cover"
+            />
             {i === 0 && (
               <span className="absolute top-2 left-2 rounded bg-foreground/80 px-2 py-0.5 text-xs text-background">
                 รูปปก

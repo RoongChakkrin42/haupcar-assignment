@@ -1,14 +1,27 @@
+import { lazy } from 'react';
 import { Navigate, type RouteObject, useRouteError } from 'react-router';
 import { AppLayout } from '@/components/app-layout';
 import { ErrorState } from '@/components/states';
-import { ReviewPage } from '@/features/admin/review-page';
-import { ReviewQueuePage } from '@/features/admin/review-queue-page';
 import { homeFor, useAuth } from '@/features/auth/auth-context';
 import { LoginPage, RegisterPage } from '@/features/auth/auth-pages';
 import { RequireAuth } from '@/features/auth/require-auth';
-import { MyVehiclesPage } from '@/features/vehicles/my-vehicles-page';
-import { NewVehiclePage } from '@/features/vehicles/new-vehicle-page';
-import { VehicleDetailPage } from '@/features/vehicles/vehicle-detail-page';
+
+// Signed-in areas load on demand (owner pages pull in Leaflet; admins never download them).
+const MyVehiclesPage = lazy(() =>
+  import('@/features/vehicles/my-vehicles-page').then((m) => ({ default: m.MyVehiclesPage })),
+);
+const NewVehiclePage = lazy(() =>
+  import('@/features/vehicles/new-vehicle-page').then((m) => ({ default: m.NewVehiclePage })),
+);
+const VehicleDetailPage = lazy(() =>
+  import('@/features/vehicles/vehicle-detail-page').then((m) => ({ default: m.VehicleDetailPage })),
+);
+const ReviewQueuePage = lazy(() =>
+  import('@/features/admin/review-queue-page').then((m) => ({ default: m.ReviewQueuePage })),
+);
+const ReviewPage = lazy(() =>
+  import('@/features/admin/review-page').then((m) => ({ default: m.ReviewPage })),
+);
 
 function Home() {
   const { user, loading } = useAuth();

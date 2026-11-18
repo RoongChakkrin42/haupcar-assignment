@@ -30,6 +30,10 @@ export function MapPicker({
   onChange: (p: LatLng) => void;
 }) {
   const [locating, setLocating] = useState(false);
+  // Leaflet paints SVG with literal colours, so read the design token instead of repeating it.
+  const [pinColor] = useState(() =>
+    getComputedStyle(document.documentElement).getPropertyValue('--primary').trim(),
+  );
   const [geoError, setGeoError] = useState<string | null>(null);
 
   const locateMe = () => {
@@ -61,7 +65,7 @@ export function MapPicker({
             <CircleMarker
               center={value}
               radius={10}
-              pathOptions={{ color: '#0b6b4f', fillColor: '#0b6b4f', fillOpacity: 0.85, weight: 3 }}
+              pathOptions={{ color: pinColor, fillColor: pinColor, fillOpacity: 0.85, weight: 3 }}
             />
           )}
         </MapContainer>

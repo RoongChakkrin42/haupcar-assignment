@@ -1,9 +1,11 @@
 import { LogOut } from 'lucide-react';
+import { Suspense } from 'react';
 import { NavLink, Outlet } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { homeFor, useAuth } from '@/features/auth/auth-context';
 import { cn } from '@/lib/utils';
 import { Brand } from './brand';
+import { ListSkeleton } from './states';
 
 export function AppLayout() {
   const { user, logout } = useAuth();
@@ -42,7 +44,9 @@ export function AppLayout() {
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-8">
-        <Outlet />
+        <Suspense fallback={<ListSkeleton />}>
+          <Outlet />
+        </Suspense>
       </main>
     </div>
   );

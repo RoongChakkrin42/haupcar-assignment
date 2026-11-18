@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { errorMessage } from '@/lib/api';
 import { formatDate } from '@/lib/format';
 import { documentLabel } from '@/lib/messages';
+import { shrinkImage } from '@/lib/shrink-image';
 import { useDeleteDocument, useUploadDocument } from './api';
 
 const HAS_EXPIRY: DocumentType[] = ['insurance', 'compulsory_insurance'];
@@ -41,8 +42,9 @@ function DocumentRow({ vehicle, type }: { vehicle: Vehicle; type: DocumentType }
   const remove = useDeleteDocument(vehicle.id);
   const [expiresOn, setExpiresOn] = useState(doc?.expiresOn ?? '');
 
-  const onFile = (file: File | undefined) => {
-    if (!file) return;
+  const onFile = async (picked: File | undefined) => {
+    if (!picked) return;
+    const file = await shrinkImage(picked); // photos of documents; PDFs pass through untouched
     upload.mutate(
       { type, file, expiresOn: expiresOn || undefined },
       {

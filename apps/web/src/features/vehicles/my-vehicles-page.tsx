@@ -121,7 +121,7 @@ function VehicleRow({ vehicle: v }: { vehicle: Vehicle }) {
       </div>
       {v.photos[0] && (
         <img
-          src={v.photos[0].url}
+          src={v.photos[0].thumbUrl}
           alt=""
           className="hidden h-14 w-20 rounded-md object-cover sm:block"
         />
