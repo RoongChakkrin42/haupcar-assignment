@@ -3,10 +3,18 @@ import request from 'supertest';
 import { authTokenSchema, userSchema } from '../src/auth/auth.schemas.js';
 import {
   carModelSchema,
+  documentSchema,
+  photoSchema,
   vehiclePageSchema,
   vehicleSchema,
 } from '../src/vehicles/vehicles.schemas.js';
-import { createTestApp, registerAndLogin } from './app.js';
+import {
+  addSubmitMedia,
+  createTestApp,
+  registerAndLogin,
+  uploadDocument,
+  uploadPhoto,
+} from './app.js';
 import { insertCarModel, pool, resetDb } from './db.js';
 
 let app: INestApplication;
@@ -23,7 +31,7 @@ afterAll(async () => {
 
 type Operation = {
   summary?: string;
-  responses: Record<string, { content?: { 'application/json'?: { schema?: object } } }>;
+  responses: Record<string, { content?: Record<string, { schema?: object }> }>;
 };
 
 describe('OpenAPI document', () => {
@@ -47,7 +55,7 @@ describe('OpenAPI document', () => {
     const undocumented = operations.filter(({ op }) => {
       const success = Object.entries(op.responses).find(([status]) => status.startsWith('2'));
       if (!op.summary || !success) return true;
-      return success[0] !== '204' && !success[1].content?.['application/json']?.schema;
+      return success[0] !== '204' && !Object.values(success[1].content ?? {}).some((c) => c.schema);
     });
     expect(undocumented.map((o) => o.route)).toEqual([]);
   });
@@ -102,6 +110,15 @@ describe('responses match the documented schemas', () => {
           .expect(200)
       ).body,
     );
+    photoSchema.parse((await uploadPhoto(app, token, id)).body);
+    documentSchema.parse(
+      (
+        await uploadDocument(app, token, id, 'insurance')
+          .field('expiresOn', '2027-01-31')
+          .expect(201)
+      ).body,
+    );
+    await addSubmitMedia(app, token, id);
     vehicleSchema.parse(
       (await http().post(`/api/v1/vehicles/${id}/submit`).set(auth).expect(200)).body,
     );

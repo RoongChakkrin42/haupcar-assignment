@@ -2,7 +2,7 @@ import type { INestApplication } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import request from 'supertest';
 import { vehicleStatusHistory, vehicles } from '../src/db/schema.js';
-import { createTestApp, registerAndLogin } from './app.js';
+import { addSubmitMedia, createTestApp, registerAndLogin } from './app.js';
 import { db, insertCarModel, pool, resetDb } from './db.js';
 
 let app: INestApplication;
@@ -37,6 +37,13 @@ const validVehicle = () => ({
 async function createVehicle(token = owner.token, body: object = validVehicle()) {
   const res = await api(token).post('/vehicles', body).expect(201);
   return res.body;
+}
+
+/** A vehicle with everything submit needs. */
+async function createCompleteVehicle() {
+  const v = await createVehicle();
+  await addSubmitMedia(app, owner.token, v.id);
+  return v;
 }
 
 /** Puts a vehicle straight into a status — admin approval arrives in Step 6. */
@@ -288,9 +295,9 @@ describe('DELETE /vehicles/:id', () => {
 
 describe('POST /vehicles/:id/submit', () => {
   it('moves a complete draft to pending_review and records history', async () => {
-    const v = await createVehicle();
+    const v = await createCompleteVehicle();
     const res = await api(owner.token).post(`/vehicles/${v.id}/submit`).expect(200);
-    expect(res.body).toMatchObject({ status: 'pending_review', version: 2 });
+    expect(res.body.status).toBe('pending_review');
 
     const history = await db
       .select()
@@ -308,17 +315,23 @@ describe('POST /vehicles/:id/submit', () => {
       plateProvince: 'ชลบุรี',
     });
     const res = await api(owner.token).post(`/vehicles/${v.id}/submit`).expect(422);
-    expect(res.body.missing.sort()).toEqual(['dailyPrice', 'location', 'pickupAddress']);
+    expect(res.body.missing.sort()).toEqual([
+      'dailyPrice',
+      'location',
+      'photos',
+      'pickupAddress',
+      'registrationDocument',
+    ]);
   });
 
   it('allows resubmitting a rejected vehicle', async () => {
-    const v = await createVehicle();
+    const v = await createCompleteVehicle();
     await forceStatus(v.id, 'rejected');
     await api(owner.token).post(`/vehicles/${v.id}/submit`).expect(200);
   });
 
   it('refuses to submit twice', async () => {
-    const v = await createVehicle();
+    const v = await createCompleteVehicle();
     await api(owner.token).post(`/vehicles/${v.id}/submit`).expect(200);
     await api(owner.token).post(`/vehicles/${v.id}/submit`).expect(409);
   });

@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   check,
+  date,
   geometry,
   index,
   integer,
@@ -125,4 +126,39 @@ export const vehicleStatusHistory = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index('vehicle_status_history_vehicle_idx').on(t.vehicleId, t.createdAt)],
+);
+
+export const vehiclePhotos = pgTable(
+  'vehicle_photos',
+  {
+    id: id(),
+    vehicleId: uuid()
+      .notNull()
+      .references(() => vehicles.id, { onDelete: 'cascade' }),
+    storageKey: text().notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index('vehicle_photos_vehicle_idx').on(t.vehicleId, t.createdAt)],
+);
+
+export const documentType = pgEnum('document_type', [
+  'registration', // เล่มทะเบียน
+  'insurance', // ประกันภัย
+  'compulsory_insurance', // พ.ร.บ.
+]);
+
+// Personal data (PII): only the owner and admins may read these.
+export const vehicleDocuments = pgTable(
+  'vehicle_documents',
+  {
+    id: id(),
+    vehicleId: uuid()
+      .notNull()
+      .references(() => vehicles.id, { onDelete: 'cascade' }),
+    type: documentType().notNull(),
+    storageKey: text().notNull(),
+    expiresOn: date(),
+    createdAt: createdAt(),
+  },
+  (t) => [unique('vehicle_documents_one_per_type').on(t.vehicleId, t.type)],
 );

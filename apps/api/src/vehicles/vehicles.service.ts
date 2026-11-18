@@ -6,10 +6,17 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { and, count, desc, eq, isNull, type SQL } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, isNull, type SQL, sql } from 'drizzle-orm';
 import { pgErrorOf } from '../common/pg-error.js';
 import { DB, type Db } from '../db/db.module.js';
-import { carModels, vehicleStatusHistory, vehicles } from '../db/schema.js';
+import {
+  carModels,
+  vehicleDocuments,
+  vehiclePhotos,
+  vehicleStatusHistory,
+  vehicles,
+} from '../db/schema.js';
+import { FileStorage } from '../files/file-storage.js';
 import { assertTransition, requiresReReview } from './vehicle-status.js';
 import type {
   CreateVehicleInput,
@@ -18,6 +25,8 @@ import type {
 } from './vehicles.schemas.js';
 
 type LatLng = { lat: number; lng: number };
+export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
+export type VehicleRow = typeof vehicles.$inferSelect;
 
 const toPoint = (loc: LatLng | null | undefined) => (loc ? { x: loc.lng, y: loc.lat } : loc);
 
@@ -52,7 +61,10 @@ const SUBMIT_REQUIRED = ['location', 'dailyPrice', 'pickupAddress'] as const;
 
 @Injectable()
 export class VehiclesService {
-  constructor(@Inject(DB) private readonly db: Db) {}
+  constructor(
+    @Inject(DB) private readonly db: Db,
+    private readonly storage: FileStorage,
+  ) {}
 
   async list(ownerId: string, { page, pageSize, status }: ListVehiclesQuery) {
     const where = and(ownedBy(ownerId), status ? eq(vehicles.status, status) : undefined);
@@ -63,13 +75,14 @@ export class VehiclesService {
         .offset((page - 1) * pageSize),
       this.db.select({ total: count() }).from(vehicles).where(where),
     ]);
-    return { items: rows.map(toDto), total, page, pageSize };
+    return { items: await this.withMedia(rows), total, page, pageSize };
   }
 
   async get(ownerId: string, id: string) {
     const [row] = await this.select(ownedBy(ownerId, id));
     if (!row) throw new NotFoundException('Vehicle not found');
-    return toDto(row);
+    const [vehicle] = await this.withMedia([row]);
+    return vehicle;
   }
 
   async create(ownerId: string, input: CreateVehicleInput) {
@@ -82,59 +95,44 @@ export class VehiclesService {
   }
 
   async update(ownerId: string, id: string, { version, ...changes }: UpdateVehicleInput) {
-    await this.db
-      .transaction(async (tx) => {
-        const current = await this.lockOwned(tx, ownerId, id);
-        if (current.version !== version) {
-          throw new ConflictException('Vehicle was modified by someone else; reload and try again');
-        }
-        const reReview = current.status === 'approved' && requiresReReview(changes, current);
-        if (reReview) assertTransition('approved', 'pending_review', 'system');
-
-        await tx
-          .update(vehicles)
-          .set({
-            ...changes,
-            location: toPoint(changes.location),
-            version: current.version + 1,
-            ...(reReview && { status: 'pending_review' as const }),
-          })
-          .where(eq(vehicles.id, id));
-        if (reReview) {
-          await tx.insert(vehicleStatusHistory).values({
-            vehicleId: id,
-            fromStatus: 'approved',
-            toStatus: 'pending_review',
-            changedBy: ownerId,
-            reason: 'Key fields edited after approval',
-          });
-        }
-      })
-      .catch(rethrowConstraint);
+    await this.withOwnedVehicle(ownerId, id, async (tx, current) => {
+      if (current.version !== version) {
+        throw new ConflictException('Vehicle was modified by someone else; reload and try again');
+      }
+      await tx
+        .update(vehicles)
+        .set({ ...changes, location: toPoint(changes.location), version: current.version + 1 })
+        .where(eq(vehicles.id, id));
+      if (requiresReReview(changes, current)) {
+        await this.requeueIfApproved(tx, current, ownerId, 'Key fields edited after approval');
+      }
+    }).catch(rethrowConstraint);
     return this.get(ownerId, id);
   }
 
   async submit(ownerId: string, id: string) {
-    await this.db.transaction(async (tx) => {
-      const current = await this.lockOwned(tx, ownerId, id);
+    await this.withOwnedVehicle(ownerId, id, async (tx, current) => {
       assertTransition(current.status, 'pending_review', 'owner');
-      const missing = SUBMIT_REQUIRED.filter((f) => current[f] === null);
+      const [[photo], [registration]] = await Promise.all([
+        tx
+          .select({ id: vehiclePhotos.id })
+          .from(vehiclePhotos)
+          .where(eq(vehiclePhotos.vehicleId, id))
+          .limit(1),
+        tx
+          .select({ id: vehicleDocuments.id })
+          .from(vehicleDocuments)
+          .where(
+            and(eq(vehicleDocuments.vehicleId, id), eq(vehicleDocuments.type, 'registration')),
+          ),
+      ]);
+      const missing: string[] = SUBMIT_REQUIRED.filter((f) => current[f] === null);
+      if (!photo) missing.push('photos');
+      if (!registration) missing.push('registrationDocument');
       if (missing.length) {
-        throw new UnprocessableEntityException({
-          message: 'Vehicle is incomplete',
-          missing,
-        });
+        throw new UnprocessableEntityException({ message: 'Vehicle is incomplete', missing });
       }
-      await tx
-        .update(vehicles)
-        .set({ status: 'pending_review', version: current.version + 1 })
-        .where(eq(vehicles.id, id));
-      await tx.insert(vehicleStatusHistory).values({
-        vehicleId: id,
-        fromStatus: current.status,
-        toStatus: 'pending_review',
-        changedBy: ownerId,
-      });
+      await this.changeStatus(tx, current, 'pending_review', ownerId);
     });
     return this.get(ownerId, id);
   }
@@ -148,6 +146,46 @@ export class VehiclesService {
     if (!deleted.length) throw new NotFoundException('Vehicle not found');
   }
 
+  /** Runs `fn` in a transaction holding a row lock on the caller's own vehicle (404 otherwise). */
+  withOwnedVehicle<T>(
+    ownerId: string,
+    id: string,
+    fn: (tx: Tx, current: VehicleRow) => Promise<T>,
+  ) {
+    return this.db.transaction(async (tx) => {
+      const [current] = await tx.select().from(vehicles).where(ownedBy(ownerId, id)).for('update');
+      if (!current) throw new NotFoundException('Vehicle not found');
+      return fn(tx, current);
+    });
+  }
+
+  /** An approved vehicle whose checked details changed must be reviewed again. */
+  async requeueIfApproved(tx: Tx, current: VehicleRow, userId: string, reason: string) {
+    if (current.status !== 'approved') return;
+    assertTransition('approved', 'pending_review', 'system');
+    await this.changeStatus(tx, current, 'pending_review', userId, reason);
+  }
+
+  private async changeStatus(
+    tx: Tx,
+    current: VehicleRow,
+    to: VehicleRow['status'],
+    userId: string,
+    reason?: string,
+  ) {
+    await tx
+      .update(vehicles)
+      .set({ status: to, version: sql`${vehicles.version} + 1` })
+      .where(eq(vehicles.id, current.id));
+    await tx.insert(vehicleStatusHistory).values({
+      vehicleId: current.id,
+      fromStatus: current.status,
+      toStatus: to,
+      changedBy: userId,
+      reason,
+    });
+  }
+
   private select(where: SQL | undefined) {
     return this.db
       .select(vehicleColumns)
@@ -156,18 +194,44 @@ export class VehiclesService {
       .where(where);
   }
 
-  private async lockOwned(tx: Pick<Db, 'select'>, ownerId: string, id: string) {
-    const [row] = await tx.select().from(vehicles).where(ownedBy(ownerId, id)).for('update');
-    if (!row) throw new NotFoundException('Vehicle not found');
-    return row;
+  private async withMedia<R extends { id: string; location: { x: number; y: number } | null }>(
+    rows: R[],
+  ) {
+    const ids = rows.map((r) => r.id);
+    const [photos, documents] = ids.length
+      ? await Promise.all([
+          this.db
+            .select()
+            .from(vehiclePhotos)
+            .where(inArray(vehiclePhotos.vehicleId, ids))
+            .orderBy(asc(vehiclePhotos.createdAt), asc(vehiclePhotos.id)),
+          this.db
+            .select()
+            .from(vehicleDocuments)
+            .where(inArray(vehicleDocuments.vehicleId, ids))
+            .orderBy(asc(vehicleDocuments.createdAt)),
+        ])
+      : [[], []];
+    return rows.map(({ location, ...row }) => ({
+      ...row,
+      location: location && { lat: location.y, lng: location.x },
+      photos: photos.filter((p) => p.vehicleId === row.id).map((p) => this.photoDto(p)),
+      documents: documents.filter((d) => d.vehicleId === row.id).map((d) => this.documentDto(d)),
+    }));
   }
-}
 
-function toDto({
-  location,
-  ...row
-}: { location: { x: number; y: number } | null } & Record<string, unknown>) {
-  return { ...row, location: location && { lat: location.y, lng: location.x } };
+  photoDto(p: typeof vehiclePhotos.$inferSelect) {
+    return { id: p.id, url: this.storage.signedUrl(p.storageKey) };
+  }
+
+  documentDto(d: typeof vehicleDocuments.$inferSelect) {
+    return {
+      id: d.id,
+      type: d.type,
+      expiresOn: d.expiresOn,
+      url: this.storage.signedUrl(d.storageKey),
+    };
+  }
 }
 
 function rethrowConstraint(e: unknown): never {

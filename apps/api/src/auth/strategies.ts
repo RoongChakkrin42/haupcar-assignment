@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy as JwtStrategyBase } from 'passport-jwt';
 import { Strategy as LocalStrategyBase } from 'passport-local';
+import { requireEnv } from '../common/env.js';
 import { AuthService, type JwtPayload, type User } from './auth.service.js';
 
 @Injectable()
@@ -34,8 +35,4 @@ export class JwtStrategy extends PassportStrategy(JwtStrategyBase) {
   }
 }
 
-export function requireJwtSecret(): string {
-  const secret = process.env.JWT_SECRET;
-  if (!secret) throw new Error('JWT_SECRET is not set');
-  return secret;
-}
+export const requireJwtSecret = () => requireEnv('JWT_SECRET');

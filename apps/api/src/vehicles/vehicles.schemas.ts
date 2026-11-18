@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { bodyType, fuelType, transmission, vehicleStatus } from '../db/schema.js';
+import { bodyType, documentType, fuelType, transmission, vehicleStatus } from '../db/schema.js';
 
 // "1กข 1234", "1กข-1234" and "1กข1234" are the same plate.
 const plateNumber = z
@@ -55,6 +55,23 @@ export const carModelSchema = z.strictObject({
   seats: z.int(),
 });
 
+export const documentUploadSchema = z.object({
+  type: z.enum(documentType.enumValues),
+  expiresOn: z.iso.date().optional().describe('YYYY-MM-DD, e.g. insurance end date'),
+});
+export type DocumentUploadInput = z.infer<typeof documentUploadSchema>;
+
+const signedUrl = z.string().describe('Signed, expires in 1 hour; usable as <img src>');
+
+export const photoSchema = z.strictObject({ id: z.uuid(), url: signedUrl });
+
+export const documentSchema = z.strictObject({
+  id: z.uuid(),
+  type: z.enum(documentType.enumValues),
+  expiresOn: z.iso.date().nullable(),
+  url: signedUrl,
+});
+
 export const vehicleSchema = z.strictObject({
   id: z.uuid(),
   ownerId: z.uuid(),
@@ -72,6 +89,8 @@ export const vehicleSchema = z.strictObject({
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
   model: carModelSchema.pick({ id: true, make: true, model: true, year: true }),
+  photos: z.array(photoSchema).describe('Upload order; the first is the cover'),
+  documents: z.array(documentSchema),
 });
 
 export const vehiclePageSchema = z.strictObject({

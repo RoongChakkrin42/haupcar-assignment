@@ -24,3 +24,7 @@ route is undocumented or a response doesn't match its documented schema.
 
 Conventions: all routes under `/api/v1`, bearer JWT unless public, money in integer satang
 (`120000` = ฿1,200), location as `{ lat, lng }`, owners only see their own vehicles (others → 404).
+
+Uploads (photos, documents) go through the API: images are re-encoded to WebP ≤ 1600px with all
+EXIF (incl. GPS) removed, then stored under `UPLOAD_DIR` (default `apps/api/uploads`, git-ignored).
+Clients read them through signed URLs (`/api/v1/files/...`, valid ~1 hour) returned on each vehicle.

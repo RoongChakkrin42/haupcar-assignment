@@ -15,6 +15,13 @@
       "when": 1795009585719,
       "tag": "0001_init",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795016346377,
+      "tag": "0002_vehicle_media",
+      "breakpoints": true
     }
   ]
 }
