@@ -3,7 +3,7 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { and, count, eq } from 'drizzle-orm';
 import { vehicleDocuments, vehiclePhotos } from '../db/schema.js';
 import { FileStorage } from '../files/file-storage.js';
-import { prepareUpload } from '../files/uploads.js';
+import { makeThumbnail, prepareUpload } from '../files/uploads.js';
 import { VehiclesService } from './vehicles.service.js';
 
 const MAX_PHOTOS = 10;
@@ -17,6 +17,7 @@ export class VehicleMediaService {
 
   async addPhoto(ownerId: string, vehicleId: string, file: Express.Multer.File | undefined) {
     const { data, ext } = await prepareUpload(file, { allowPdf: false });
+    const thumb = await makeThumbnail(data);
     return this.vehicles.withOwnedVehicle(ownerId, vehicleId, async (tx) => {
       const [{ n }] = await tx
         .select({ n: count() })
@@ -26,29 +27,32 @@ export class VehicleMediaService {
         throw new ConflictException(`A vehicle can have at most ${MAX_PHOTOS} photos`);
 
       const key = await this.storage.save(data, ext);
+      const thumbKey = await this.storage.save(thumb, 'webp');
       try {
         const [photo] = await tx
           .insert(vehiclePhotos)
-          .values({ vehicleId, storageKey: key })
+          .values({ vehicleId, storageKey: key, thumbStorageKey: thumbKey })
           .returning();
         return this.vehicles.photoDto(photo);
       } catch (e) {
-        await this.storage.remove(key);
+        await Promise.all([this.storage.remove(key), this.storage.remove(thumbKey)]);
         throw e;
       }
     });
   }
 
   async removePhoto(ownerId: string, vehicleId: string, photoId: string) {
-    const key = await this.vehicles.withOwnedVehicle(ownerId, vehicleId, async (tx) => {
+    const photo = await this.vehicles.withOwnedVehicle(ownerId, vehicleId, async (tx) => {
       const [photo] = await tx
         .delete(vehiclePhotos)
         .where(and(eq(vehiclePhotos.id, photoId), eq(vehiclePhotos.vehicleId, vehicleId)))
         .returning();
       if (!photo) throw new NotFoundException('Photo not found');
-      return photo.storageKey;
+      return photo;
     });
-    await this.storage.remove(key); // after commit, so a rollback never leaves a row without its file
+    // After commit, so a rollback never leaves a row without its files.
+    await this.storage.remove(photo.storageKey);
+    if (photo.thumbStorageKey) await this.storage.remove(photo.thumbStorageKey);
   }
 
   /** Uploading a type that already exists replaces it. Changing documents of an approved vehicle re-queues it. */

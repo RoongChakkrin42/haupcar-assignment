@@ -69,7 +69,11 @@ export type DocumentUploadInput = z.infer<typeof documentUploadSchema>;
 
 const signedUrl = z.string().describe('Signed, expires in 1 hour; usable as <img src>');
 
-export const photoSchema = z.strictObject({ id: z.uuid(), url: signedUrl });
+export const photoSchema = z.strictObject({
+  id: z.uuid(),
+  url: signedUrl.describe('Full size (≤ 1600px); signed, expires in 1 hour'),
+  thumbUrl: signedUrl.describe('400px thumbnail for lists and grids'),
+});
 
 export const documentSchema = z.strictObject({
   id: z.uuid(),

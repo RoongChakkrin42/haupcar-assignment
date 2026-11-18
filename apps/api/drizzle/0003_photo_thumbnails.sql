@@ -1,0 +1,1 @@
+ALTER TABLE "vehicle_photos" ADD COLUMN "thumb_storage_key" text;

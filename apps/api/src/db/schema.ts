@@ -137,6 +137,7 @@ export const vehiclePhotos = pgTable(
       .notNull()
       .references(() => vehicles.id, { onDelete: 'cascade' }),
     storageKey: text().notNull(),
+    thumbStorageKey: text(), // null for photos uploaded before thumbnails existed
     createdAt: createdAt(),
   },
   (t) => [index('vehicle_photos_vehicle_idx').on(t.vehicleId, t.createdAt)],

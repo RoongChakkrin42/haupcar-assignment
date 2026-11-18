@@ -36,3 +36,11 @@ export async function prepareUpload(
     .toBuffer();
   return { data, ext: 'webp' };
 }
+
+/** 400px version for lists and grids, made from the already re-encoded (metadata-free) image. */
+export function makeThumbnail(image: Buffer) {
+  return sharp(image)
+    .resize({ width: 400, height: 400, fit: 'inside', withoutEnlargement: true })
+    .webp({ quality: 75 })
+    .toBuffer();
+}

@@ -2,7 +2,7 @@ import type { INestApplication } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import sharp from 'sharp';
 import request from 'supertest';
-import { vehicleStatusHistory, vehicles } from '../src/db/schema.js';
+import { vehiclePhotos, vehicleStatusHistory, vehicles } from '../src/db/schema.js';
 import {
   createTestApp,
   registerAndLogin,
@@ -73,12 +73,38 @@ describe('photos', () => {
     expect(res.body).toEqual({
       id: expect.any(String),
       url: expect.stringMatching(/^\/api\/v1\/files\//),
+      thumbUrl: expect.stringMatching(/^\/api\/v1\/files\//),
     });
+    expect(res.body.thumbUrl).not.toBe(res.body.url);
 
     const file = await fetchFile(res.body.url).expect(200).expect('content-type', 'image/webp');
     const meta = await sharp(file.body).metadata();
     expect(meta.exif).toBeUndefined();
     expect(Math.max(meta.width ?? 0, meta.height ?? 0)).toBe(1600);
+  });
+
+  it('makes a 400px thumbnail for lists, also without EXIF', async () => {
+    const res = await http()
+      .post(`/api/v1/vehicles/${vehicleId}/photos`)
+      .set(auth(owner.token))
+      .attach('file', await testJpeg({ width: 2400, height: 1800 }), 'car.jpg')
+      .expect(201);
+    const thumb = await fetchFile(res.body.thumbUrl)
+      .expect(200)
+      .expect('content-type', 'image/webp');
+    const meta = await sharp(thumb.body).metadata();
+    expect(meta.exif).toBeUndefined();
+    expect([meta.width, meta.height]).toEqual([400, 300]);
+  });
+
+  it('falls back to the full image for photos stored before thumbnails existed', async () => {
+    const photo = (await uploadPhoto(app, owner.token, vehicleId)).body;
+    await db
+      .update(vehiclePhotos)
+      .set({ thumbStorageKey: null })
+      .where(eq(vehiclePhotos.id, photo.id));
+    const [listed] = (await getVehicle()).photos;
+    expect(listed.thumbUrl).toBe(listed.url);
   });
 
   it('lists photos on the vehicle in upload order', async () => {
@@ -133,6 +159,7 @@ describe('photos', () => {
       .expect(204);
     expect((await getVehicle()).photos).toEqual([]);
     await fetchFile(photo.url).expect(404);
+    await fetchFile(photo.thumbUrl).expect(404);
   });
 
   it('keeps an approved vehicle approved when photos change', async () => {

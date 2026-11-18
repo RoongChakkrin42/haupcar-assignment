@@ -249,7 +249,11 @@ export class VehiclesService {
   }
 
   photoDto(p: typeof vehiclePhotos.$inferSelect) {
-    return { id: p.id, url: this.storage.signedUrl(p.storageKey) };
+    return {
+      id: p.id,
+      url: this.storage.signedUrl(p.storageKey),
+      thumbUrl: this.storage.signedUrl(p.thumbStorageKey ?? p.storageKey),
+    };
   }
 
   documentDto(d: typeof vehicleDocuments.$inferSelect) {
