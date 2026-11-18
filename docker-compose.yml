@@ -1,0 +1,19 @@
+services:
+  db:
+    image: imresamu/postgis:17-3.5 # multi-arch; official postgis/postgis has no arm64
+    environment:
+      POSTGRES_USER: haupcar
+      POSTGRES_PASSWORD: haupcar
+      POSTGRES_DB: haupcar
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./docker/init-test-db.sql:/docker-entrypoint-initdb.d/10-test-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U haupcar -d haupcar"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+volumes:
+  db-data:
