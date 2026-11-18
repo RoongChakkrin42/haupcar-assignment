@@ -29,6 +29,7 @@ export default defineConfig({
       env: {
         PORT: String(API_PORT),
         DATABASE_URL: E2E_DB_URL,
+        AUTH_RATE_LIMIT: '1000', // every test logs in from the same IP
         UPLOAD_DIR: mkdtempSync(join(tmpdir(), 'haupcar-e2e-uploads-')),
       },
       reuseExistingServer: false,

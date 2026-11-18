@@ -38,6 +38,15 @@ On start, a one-off `migrate` container runs migrations, seeds car models and cr
 Data and uploads live in the `app-db-data` and `app-uploads` volumes, separate from the dev
 database. Stop with `docker compose --profile app down` (add `-v` to wipe that data).
 
+## Operations & security
+
+- Logs: one line per request with a request id (also returned as `X-Request-Id` and passed on by
+  nginx), method, path, status, duration and IP. JSON in production (`NODE_ENV=production`),
+  never query strings, tokens or personal data.
+- `GET /api/v1/health` checks the API and database; Docker uses it as the API healthcheck.
+- Login/register are rate limited per client IP (`AUTH_RATE_LIMIT`, default 10/min).
+- See [SECURITY.md](SECURITY.md) for the OWASP Top 10 / PDPA checklist, including what is not done yet.
+
 ## Layout
 
 - `packages/shared` — Zod schemas, enums and types used by both the API (validation, OpenAPI) and the web app (forms, API types)

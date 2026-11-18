@@ -54,6 +54,7 @@ test.each([
   [409, 'Email is already registered', 'อีเมลนี้สมัครไว้แล้ว'],
   [401, 'Invalid email or password', 'อีเมลหรือรหัสผ่านไม่ถูกต้อง'],
   [413, 'Payload Too Large', 'ไฟล์ใหญ่เกิน 10 MB'],
+  [429, 'ThrottlerException: Too Many Requests', 'ลองหลายครั้งเกินไป รอสักครู่แล้วลองใหม่'],
   [500, 'boom', 'ระบบขัดข้อง ลองใหม่อีกครั้ง'],
 ])('translates %i "%s" for people', (status, message, thai) => {
   expect(errorMessage(new ApiError(status, message))).toBe(thai);

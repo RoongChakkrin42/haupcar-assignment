@@ -24,5 +24,6 @@ CMD ["node", "dist/src/main.js"]
 
 FROM nginx:1.29-alpine AS web
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY docker/security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY --from=build /repo/apps/web/dist /usr/share/nginx/html
 EXPOSE 80

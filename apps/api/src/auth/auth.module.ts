@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
@@ -11,6 +12,12 @@ import { JwtStrategy, LocalStrategy, requireJwtSecret } from './strategies.js';
 @Module({
   imports: [
     PassportModule,
+    // Login/register attempts per client IP per minute (guards password guessing).
+    ThrottlerModule.forRootAsync({
+      useFactory: () => [
+        { name: 'default', ttl: 60_000, limit: Number(process.env.AUTH_RATE_LIMIT ?? 10) },
+      ],
+    }),
     JwtModule.registerAsync({
       useFactory: () => ({ secret: requireJwtSecret(), signOptions: { expiresIn: '1d' } }),
     }),

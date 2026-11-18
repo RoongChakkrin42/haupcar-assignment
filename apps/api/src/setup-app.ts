@@ -1,8 +1,15 @@
 import type { INestApplication } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import type { Express } from 'express';
+import { requestLogging } from './common/request-logging.js';
 
 // Shared by main.ts and tests so both run the app the same way.
 export function setupApp<T extends INestApplication>(app: T): T {
+  // Behind nginx/docker, take the client IP from X-Forwarded-For — but only when the request
+  // comes from a private/loopback address, so outside clients can't spoof their IP.
+  const express = app.getHttpAdapter().getInstance() as Express;
+  express.set('trust proxy', 'loopback, linklocal, uniquelocal');
+  app.use(requestLogging());
   app.setGlobalPrefix('api/v1');
   app.enableShutdownHooks();
 
